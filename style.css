@@ -1,0 +1,42 @@
+body {
+  margin:0;
+  background:black;
+  color:white;
+  font-family:Arial;
+}
+
+nav {
+  display:flex;
+  justify-content:space-between;
+  padding:15px;
+  background:#111;
+}
+
+ul {
+  display:flex;
+  gap:20px;
+  list-style:none;
+}
+
+a {
+  color:lime;
+  text-decoration:none;
+}
+
+.hero {
+  text-align:center;
+  padding:50px;
+}
+
+.bike {
+  width:300px;
+  height:150px;
+  background:url('https://www.bikewale.com/kawasaki-bikes/ninja-h2r/images/') no-repeat center/cover;
+  margin:auto;
+  animation: moveBike 5s infinite alternate;
+}
+
+@keyframes moveBike {
+  from { transform: translateX(-200px) rotateY(0deg); }
+  to { transform: translateX(200px) rotateY(360deg); }
+}
