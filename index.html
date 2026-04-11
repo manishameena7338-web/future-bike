@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NinjaH2R Experience</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero__content">
+        <p class="tag">Hyperbike • 3D • Sound</p>
+        <h1>NinjaH2R <span>Real Feel</span> Website</h1>
+        <p>
+          Scroll karo aur dekho bike ka 3D motion, parts details, aur realistic engine vibe.
+        </p>
+        <div class="hero__actions">
+          <button id="engineToggle" class="btn">Start Engine Sound</button>
+          <a href="#parts" class="btn btn--ghost">See Parts</a>
+        </div>
+      </div>
+      <div id="scene"></div>
+    </header>
+
+    <main>
+      <section id="parts" class="parts">
+        <h2>Bike Parts ki Detailed Info</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Supercharged Engine</h3>
+            <p>
+              Inline-4 supercharged concept: high-rev response, drag-level acceleration feeling,
+              and aggressive power delivery profile.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Carbon Winglets</h3>
+            <p>
+              Front aero winglets airflow ko stabilize karte hain, high speed pe front-end lift ko
+              reduce karte hue corner confidence improve karte hain.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Dual Disc Brakes</h3>
+            <p>
+              Large front dual-disc setup with radial calipers for tighter control and late braking
+              feel on performance runs.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Trellis Frame</h3>
+            <p>
+              Stiffness + lightweight balance for sharp handling. Frame geometry quick direction
+              changes ke liye optimized feel deti hai.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Performance Tires</h3>
+            <p>
+              Wide rear and sticky sport compound tire profile traction aur launch stability ko
+              support karta hai.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Digital Cluster</h3>
+            <p>
+              Race-style cockpit UI: speed, RPM visualization, ride mode hints, and telemetry style
+              elements.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="scroll-note">
+        <h2>Scroll-driven motion active</h2>
+        <p>
+          Jitna scroll karoge utna bike angle, wheel spin aur camera movement change hogi for a
+          live showroom-like feel.
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
