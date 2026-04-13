@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KAWASAKI NINJA H2R — BEYOND LIMITS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --green: #39ff14;
+      --green-dim: #1a7a00;
+      --dark: #050505;
+      --mid: #0d0d0d;
+      --light: #f0f0f0;
+      --accent: #00e5ff;
+      --red: #ff2244;
+      --panel-bg: rgba(5, 5, 5, 0.82);
+      --border: rgba(57, 255, 20, 0.18);
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--dark);
+      color: var(--light);
+      font-family: 'Rajdhani', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── CANVAS ── */
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    #three-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── LOADING ── */
+    #loader {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--dark);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+
+    #loader.hidden { opacity: 0; visibility: hidden; }
+
+    .loader-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(36px, 8vw, 80px);
+      letter-spacing: 0.18em;
+      color: var(--green);
+      text-shadow: 0 0 40px rgba(57,255,20,0.5);
+    }
+
+    .loader-sub {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 0.3em;
+      color: var(--green-dim);
+    }
+
+    .loader-bar-wrap {
+      width: 280px;
+      height: 2px;
+      background: rgba(57,255,20,0.12);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .loader-bar {
+      height: 100%;
+      background: var(--green);
+      width: 0%;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 12px var(--green);
+    }
+
+    .loader-pct {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      color: var(--green);
+      letter-spacing: 0.2em;
+    }
+
+    /* ── SCROLL CONTAINER ── */
+    #scroll-root {
+      position: relative;
+      z-index: 1;
+    }
+
+    .section {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    /* ── HERO ── */
+    #hero {
+      justify-content: flex-start;
+      padding: 0 8vw;
+    }
+
+    .hero-content {
+      pointer-events: auto;
+      max-width: 560px;
+    }
+
+    .hero-eyebrow {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.5em;
+      color: var(--green);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 32px;
+      height: 1px;
+      background: var(--green);
+    }
+
+    .hero-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(60px, 10vw, 120px);
+      line-height: 0.9;
+      letter-spacing: 0.04em;
+      color: var(--light);
+      text-shadow: 0 0 60px rgba(57,255,20,0.12);
+      margin-bottom: 8px;
+    }
+
+    .hero-title span { color: var(--green); }
+
+    .hero-model {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(28px, 5vw, 56px);
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      margin-bottom: 28px;
+    }
+
+    .hero-desc {
+      font-size: 15px;
+      line-height: 1.7;
+      color: rgba(240,240,240,0.6);
+      font-weight: 300;
+      max-width: 420px;
+      margin-bottom: 40px;
+    }
+
+    .scroll-hint {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.4em;
+      color: rgba(57,255,20,0.5);
+      animation: pulse-hint 2s ease-in-out infinite;
+    }
+
+    .scroll-arrow {
+      width: 16px;
+      height: 16px;
+      border-right: 1px solid var(--green);
+      border-bottom: 1px solid var(--green);
+      transform: rotate(45deg);
+      animation: bounce-arrow 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-hint { 0%,100%{opacity:0.5} 50%{opacity:1} }
+    @keyframes bounce-arrow { 0%,100%{transform:rotate(45deg) translateY(0)} 50%{transform:rotate(45deg) translateY(4px)} }
+
+    /* ── STAT PANELS ── */
+    .stat-panel {
+      pointer-events: auto;
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 36px 40px;
+      max-width: 520px;
+      position: relative;
+      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+    }
+
+    .stat-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--green), transparent);
+    }
+
+    .panel-tag {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.4em;
+      color: var(--green);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+    }
+
+    .panel-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(32px, 4vw, 52px);
+      letter-spacing: 0.06em;
+      color: var(--light);
+      margin-bottom: 14px;
+      line-height: 1;
+    }
+
+    .panel-body {
+      font-size: 14px;
+      line-height: 1.75;
+      color: rgba(240,240,240,0.55);
+      font-weight: 300;
+      margin-bottom: 28px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .stat-item {
+      border-left: 2px solid var(--green-dim);
+      padding-left: 14px;
+    }
+
+    .stat-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(24px, 3vw, 38px);
+      color: var(--green);
+      letter-spacing: 0.05em;
+      line-height: 1;
+    }
+
+    .stat-unit {
+      font-size: 12px;
+      color: rgba(57,255,20,0.6);
+      font-family: 'Share Tech Mono', monospace;
+      margin-left: 4px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: rgba(240,240,240,0.35);
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+
+    /* ── SECTIONS LAYOUT ── */
+    #engine-section  { justify-content: flex-end;   padding: 0 8vw; }
+    #aero-section    { justify-content: flex-start;  padding: 0 8vw; }
+    #chassis-section { justify-content: flex-end;   padding: 0 8vw; }
+    #gallery-section { justify-content: center; flex-direction: column; align-items: center; padding: 10vh 8vw; }
+
+    /* ── FULL-BLEED DIVIDER LABEL ── */
+    .section-divider {
+      position: sticky;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ── SPECS TABLE ── */
+    .specs-full {
+      pointer-events: auto;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .specs-full h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(40px, 6vw, 80px);
+      letter-spacing: 0.08em;
+      margin-bottom: 48px;
+      text-align: center;
+    }
+
+    .specs-full h2 span { color: var(--green); }
+
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .spec-table tr {
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      transition: background 0.2s;
+    }
+
+    .spec-table tr:hover { background: rgba(57,255,20,0.04); }
+
+    .spec-table td {
+      padding: 14px 20px;
+      font-size: 14px;
+    }
+
+    .spec-table td:first-child {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      color: rgba(57,255,20,0.7);
+      width: 40%;
+      text-transform: uppercase;
+    }
+
+    .spec-table td:last-child {
+      color: rgba(240,240,240,0.75);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── HUD OVERLAY ── */
+    #hud {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 40px;
+      pointer-events: none;
+    }
+
+    .hud-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 0.3em;
+      color: var(--green);
+    }
+
+    .hud-right {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.35em;
+      color: rgba(57,255,20,0.45);
+      text-align: right;
+    }
+
+    /* ── PROGRESS BAR ── */
+    #progress-bar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 2px;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      z-index: 20;
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    /* ── SECTION INDICATOR ── */
+    #section-indicator {
+      position: fixed;
+      right: 32px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(57,255,20,0.25);
+      transition: all 0.3s ease;
+    }
+
+    .dot.active {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      transform: scale(1.4);
+    }
+
+    /* ── ANIMATED FADE IN ── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── NOISE OVERLAY ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.022;
+      pointer-events: none;
+    }
+
+    /* ── CORNER ACCENTS ── */
+    .corner-tl, .corner-br {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+    }
+
+    .corner-tl {
+      top: 0; left: 0;
+      border-top: 1px solid var(--green);
+      border-left: 1px solid var(--green);
+    }
+
+    .corner-br {
+      bottom: 0; right: 0;
+      border-bottom: 1px solid var(--green);
+      border-right: 1px solid var(--green);
+    }
+
+    /* ── FOOTER ── */
+    #footer {
+      position: relative;
+      z-index: 2;
+      padding: 60px 8vw 40px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .footer-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 0.3em;
+      color: var(--green-dim);
+    }
+
+    .footer-copy {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: rgba(255,255,255,0.2);
+    }
+
+    @media (max-width: 768px) {
+      #hero, #engine-section, #aero-section, #chassis-section {
+        justify-content: center;
+        padding: 12vh 5vw;
+        align-items: flex-end;
+        padding-bottom: 8vh;
+      }
+      .stat-panel { max-width: 100%; }
+      #hud { padding: 16px 20px; }
+      #section-indicator { right: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOADER -->
+  <div id="loader">
+    <div class="loader-logo">NINJA H2R</div>
+    <div class="loader-sub">INITIALIZING SYSTEMS</div>
+    <div class="loader-bar-wrap">
+      <div class="loader-bar" id="loader-bar"></div>
+    </div>
+    <div class="loader-pct" id="loader-pct">0%</div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-logo">KAWASAKI</div>
+    <div class="hud-right">
+      NINJA H2R<br>
+      <span id="hud-section-name">OVERVIEW</span>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div id="progress-bar"></div>
+
+  <!-- SECTION DOTS -->
+  <div id="section-indicator">
+    <div class="dot active" data-section="0"></div>
+    <div class="dot" data-section="1"></div>
+    <div class="dot" data-section="2"></div>
+    <div class="dot" data-section="3"></div>
+    <div class="dot" data-section="4"></div>
+  </div>
+
+  <!-- 3D CANVAS -->
+  <div id="canvas-container">
+    <canvas id="three-canvas"></canvas>
+  </div>
+
+  <!-- SCROLL ROOT -->
+  <div id="scroll-root">
+
+    <!-- SECTION 0: HERO -->
+    <section class="section" id="hero" data-section="0" data-label="OVERVIEW">
+      <div class="hero-content fade-in">
+        <div class="hero-eyebrow">Track Weapon · 2023</div>
+        <div class="hero-title">KAWASAKI<br><span>NINJA</span></div>
+        <div class="hero-model">H2R</div>
+        <p class="hero-desc">
+          The most powerful production motorcycle ever conceived. Born on the track,
+          engineered for supersonic performance — the H2R transcends the concept of
+          a motorcycle and becomes pure kinetic philosophy.
+        </p>
+        <div class="scroll-hint">
+          <div class="scroll-arrow"></div>
+          SCROLL TO EXPLORE
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: ENGINE -->
+    <section class="section" id="engine-section" data-section="1" data-label="ENGINE">
+      <div class="stat-panel fade-in">
+        <div class="corner-tl"></div>
+        <div class="corner-br"></div>
+        <div class="panel-tag">// 01 · POWERTRAIN</div>
+        <div class="panel-title">SUPERCHARGED<br>HEART</div>
+        <p class="panel-body">
+          A 998cc inline-four with Kawasaki's own centrifugal supercharger — an engineering
+          marvel designed entirely in-house. The impeller spins at up to 130,000 RPM,
+          forcing compressed air into the engine to generate power that defies physics.
+        </p>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">310<span class="stat-unit">hp</span></div>
+            <div class="stat-label">Peak Power</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">165<span class="stat-unit">Nm</span></div>
+            <div class="stat-label">Peak Torque</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">998<span class="stat-unit">cc</span></div>
+            <div class="stat-label">Displacement</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">14,000<span class="stat-unit">rpm</span></div>
+            <div class="stat-label">Redline</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: AERODYNAMICS -->
+    <section class="section" id="aero-section" data-section="2" data-label="AERODYNAMICS">
+      <div class="stat-panel fade-in">
+        <div class="corner-tl"></div>
+        <div class="corner-br"></div>
+        <div class="panel-tag">// 02 · AERODYNAMICS</div>
+        <div class="panel-title">WINGS<br>OF FORCE</div>
+        <p class="panel-body">
+          The H2R's ram air ducting and aerodynamic wings generate significant downforce
+          at speed. Wind-tunnel-refined bodywork creates a 50% increase in aerodynamic
+          efficiency over conventional superbikes. The front wings aren't styling — they're
+          structural necessity at 400 km/h.
+        </p>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">400<span class="stat-unit">km/h</span></div>
+            <div class="stat-label">Top Speed</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">2.5<span class="stat-unit">s</span></div>
+            <div class="stat-label">0–100 km/h</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">+50<span class="stat-unit">%</span></div>
+            <div class="stat-label">Aero Efficiency</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">0.42<span class="stat-unit">Cd</span></div>
+            <div class="stat-label">Drag Coefficient</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: CHASSIS -->
+    <section class="section" id="chassis-section" data-section="3" data-label="CHASSIS">
+      <div class="stat-panel fade-in">
+        <div class="corner-tl"></div>
+        <div class="corner-br"></div>
+        <div class="panel-tag">// 03 · CHASSIS & DYNAMICS</div>
+        <div class="panel-title">PRECISION<br>FRAME</div>
+        <p class="panel-body">
+          Trellis frame constructed from high-tensile steel with titanium hardware throughout.
+          Öhlins-spec suspension front and rear. Brembo monobloc brakes with six-axis IMU
+          providing cornering ABS, traction control, and launch control systems.
+        </p>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">216<span class="stat-unit">kg</span></div>
+            <div class="stat-label">Wet Weight</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">1.435<span class="stat-unit">hp/kg</span></div>
+            <div class="stat-label">Power-to-Weight</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">6-axis<span class="stat-unit"></span></div>
+            <div class="stat-label">IMU System</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">330<span class="stat-unit">mm</span></div>
+            <div class="stat-label">Front Brake Discs</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: FULL SPECS -->
+    <section class="section" id="gallery-section" data-section="4" data-label="SPECIFICATIONS">
+      <div class="specs-full fade-in">
+        <h2>FULL <span>SPECIFICATIONS</span></h2>
+        <table class="spec-table">
+          <tr><td>Engine Type</td><td>Supercharged Inline-4, DOHC 16-valve</td></tr>
+          <tr><td>Displacement</td><td>998 cc</td></tr>
+          <tr><td>Bore × Stroke</td><td>76.0 × 55.0 mm</td></tr>
+          <tr><td>Compression Ratio</td><td>8.5:1</td></tr>
+          <tr><td>Peak Power</td><td>310 hp @ 14,000 rpm</td></tr>
+          <tr><td>Peak Torque</td><td>165 Nm @ 12,500 rpm</td></tr>
+          <tr><td>Supercharger</td><td>Centrifugal, Kawasaki-designed</td></tr>
+          <tr><td>Impeller Speed</td><td>Up to 130,000 rpm</td></tr>
+          <tr><td>Transmission</td><td>6-speed with Kawasaki Quick Shifter</td></tr>
+          <tr><td>Frame</td><td>High-tensile steel trellis</td></tr>
+          <tr><td>Front Suspension</td><td>43mm inverted fork, fully adjustable</td></tr>
+          <tr><td>Rear Suspension</td><td>Horizontal back-link, fully adjustable</td></tr>
+          <tr><td>Front Brake</td><td>Dual semi-floating 330mm discs, Brembo monobloc</td></tr>
+          <tr><td>Rear Brake</td><td>Single 250mm disc, Brembo caliper</td></tr>
+          <tr><td>Front Tyre</td><td>120/600 R17</td></tr>
+          <tr><td>Rear Tyre</td><td>190/650 R17</td></tr>
+          <tr><td>Wheelbase</td><td>1,455 mm</td></tr>
+          <tr><td>Seat Height</td><td>830 mm</td></tr>
+          <tr><td>Fuel Capacity</td><td>17 L</td></tr>
+          <tr><td>Wet Weight</td><td>216 kg</td></tr>
+          <tr><td>Top Speed</td><td>&gt; 400 km/h (track-only)</td></tr>
+          <tr><td>0–100 km/h</td><td>2.5 seconds</td></tr>
+          <tr><td>Electronics</td><td>KTRC, KLCM, KIBS, KQS, 6-axis IMU</td></tr>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer id="footer">
+    <div class="footer-logo">KAWASAKI</div>
+    <div class="footer-copy">NINJA H2R · TRACK USE ONLY · ALL RIGHTS RESERVED KAWASAKI HEAVY INDUSTRIES</div>
+  </footer>
+
+  <!-- THREE.JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+
+  <script>
+  (function() {
+
+    /* ─────────────────── SCENE SETUP ─────────────────── */
+    const canvas = document.getElementById('three-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    renderer.setClearColor(0x050505, 1);
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+    camera.position.set(4, 1.5, 6);
+    camera.lookAt(0, 0.5, 0);
+
+    /* ─────────────────── RESIZE ─────────────────── */
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    /* ─────────────────── FOG ─────────────────── */
+    scene.fog = new THREE.FogExp2(0x050505, 0.045);
+
+    /* ─────────────────── LIGHTS ─────────────────── */
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+
+    // Key light — green tint
+    const keyLight = new THREE.DirectionalLight(0x88ffaa, 3.5);
+    keyLight.position.set(5, 8, 5);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.near = 0.1;
+    keyLight.shadow.camera.far = 30;
+    keyLight.shadow.camera.left = keyLight.shadow.camera.bottom = -6;
+    keyLight.shadow.camera.right = keyLight.shadow.camera.top = 6;
+    scene.add(keyLight);
+
+    // Rim light — blue/cyan
+    const rimLight = new THREE.DirectionalLight(0x00aaff, 2.0);
+    rimLight.position.set(-6, 4, -4);
+    scene.add(rimLight);
+
+    // Bottom bounce
+    const bounceLight = new THREE.PointLight(0x39ff14, 1.2, 12);
+    bounceLight.position.set(0, -1.5, 0);
+    scene.add(bounceLight);
+
+    // Fill
+    const fillLight = new THREE.HemisphereLight(0x111122, 0x000000, 0.8);
+    scene.add(fillLight);
+
+    /* ─────────────────── FLOOR ─────────────────── */
+    const floorGroup = new THREE.Group();
+    scene.add(floorGroup);
+
+    // Grid lines
+    const gridHelper = new THREE.GridHelper(20, 30, 0x39ff14, 0x0d2200);
+    gridHelper.position.y = -0.01;
+    floorGroup.add(gridHelper);
+
+    // Reflective floor disc
+    const floorGeo = new THREE.CircleGeometry(7, 80);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x050505,
+      roughness: 0.1,
+      metalness: 0.9,
+      envMapIntensity: 1.0,
+    });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.receiveShadow = true;
+    floorGroup.add(floorMesh);
+
+    // Glowing ring
+    const ringGeo = new THREE.RingGeometry(4.8, 5.0, 80);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x39ff14, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.01;
+    floorGroup.add(ring);
+
+    // Inner ring
+    const ring2Geo = new THREE.RingGeometry(2.9, 3.0, 80);
+    const ring2 = new THREE.Mesh(ring2Geo, new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide, transparent: true, opacity: 0.3 }));
+    ring2.rotation.x = -Math.PI / 2;
+    ring2.position.y = 0.01;
+    floorGroup.add(ring2);
+
+    /* ─────────────────── PARTICLES ─────────────────── */
+    const particleCount = 200;
+    const particlePositions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) {
+      particlePositions[i * 3]     = (Math.random() - 0.5) * 20;
+      particlePositions[i * 3 + 1] = Math.random() * 8;
+      particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+    }
+    const particleGeo = new THREE.BufferGeometry();
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+    const particleMat = new THREE.PointsMaterial({ color: 0x39ff14, size: 0.03, transparent: true, opacity: 0.4 });
+    const particles = new THREE.Points(particleGeo, particleMat);
+    scene.add(particles);
+
+    /* ─────────────────── CAMERA SHOTS ─────────────────── */
+    const shots = [
+      { // 0 — Hero: 3/4 front right, eye-level
+        pos: new THREE.Vector3(3.5, 1.4, 4.5),
+        target: new THREE.Vector3(0, 0.6, 0),
+        fov: 42,
+        label: 'OVERVIEW'
+      },
+      { // 1 — Engine: right side close, low angle
+        pos: new THREE.Vector3(3.0, 0.7, 1.5),
+        target: new THREE.Vector3(0.2, 0.5, 0),
+        fov: 50,
+        label: 'ENGINE'
+      },
+      { // 2 — Aero: front low dramatic
+        pos: new THREE.Vector3(0.0, 0.5, 4.0),
+        target: new THREE.Vector3(0, 0.8, 0),
+        fov: 55,
+        label: 'AERODYNAMICS'
+      },
+      { // 3 — Chassis: rear 3/4, slightly elevated
+        pos: new THREE.Vector3(-3.5, 1.8, -3.0),
+        target: new THREE.Vector3(0, 0.5, 0),
+        fov: 46,
+        label: 'CHASSIS'
+      },
+      { // 4 — Specs: top-down dramatic
+        pos: new THREE.Vector3(0, 5.5, 3.5),
+        target: new THREE.Vector3(0, 0.3, 0),
+        fov: 52,
+        label: 'SPECIFICATIONS'
+      }
+    ];
+
+    /* ─────────────────── CAMERA STATE ─────────────────── */
+    const camCurrent = {
+      pos: shots[0].pos.clone(),
+      target: shots[0].target.clone(),
+      fov: shots[0].fov
+    };
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function lerpCamera(shot, alpha) {
+      const sp = 1 - Math.pow(1 - alpha, 3); // ease out cubic
+      camCurrent.pos.lerpVectors(camCurrent.pos, shot.pos, sp * 0.08);
+      camCurrent.target.lerpVectors(camCurrent.target, shot.target, sp * 0.08);
+      camCurrent.fov = lerp(camCurrent.fov, shot.fov, sp * 0.08);
+    }
+
+    let targetShot = 0;
+
+    /* ─────────────────── SCROLL LOGIC ─────────────────── */
+    const sections = Array.from(document.querySelectorAll('.section'));
+    const dots = Array.from(document.querySelectorAll('.dot'));
+    const sectionNames = ['OVERVIEW', 'ENGINE', 'AERODYNAMICS', 'CHASSIS', 'SPECIFICATIONS'];
+    let currentSection = 0;
+
+    function onScroll() {
+      const scrollY = window.scrollY;
+      const scrollMax = document.body.scrollHeight - window.innerHeight;
+      const progress = Math.min(scrollY / scrollMax, 1);
+
+      document.getElementById('progress-bar').style.width = (progress * 100) + '%';
+
+      // Determine active section
+      let active = 0;
+      sections.forEach((s, i) => {
+        const rect = s.getBoundingClientRect();
+        if (rect.top <= window.innerHeight * 0.5) active = i;
+      });
+
+      if (active !== currentSection) {
+        currentSection = active;
+        dots.forEach((d, i) => d.classList.toggle('active', i === active));
+        document.getElementById('hud-section-name').textContent = sectionNames[active] || '';
+        targetShot = active;
+      }
+
+      // Fade in panels
+      document.querySelectorAll('.fade-in').forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.top < window.innerHeight * 0.85) el.classList.add('visible');
+      });
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    /* ─────────────────── LOAD MODEL ─────────────────── */
+    let bikeModel = null;
+    let bikeGroup = new THREE.Group();
+    floorGroup.add(bikeGroup); // ← bike lives inside floorGroup so it rotates with the floor
+
+    const loaderBar = document.getElementById('loader-bar');
+    const loaderPct = document.getElementById('loader-pct');
+    const loaderEl  = document.getElementById('loader');
+
+    // Try DRACOLoader
+    const dracoLoader = new THREE.DRACOLoader();
+    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+
+    const gltfLoader = new THREE.GLTFLoader();
+    gltfLoader.setDRACOLoader(dracoLoader);
+
+    gltfLoader.load(
+      'kawasaki-ninja-h2r-super-bike.glb',
+      (gltf) => {
+        bikeModel = gltf.scene;
+
+        // Center & scale
+        const box = new THREE.Box3().setFromObject(bikeModel);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = 2.8 / maxDim;
+
+        bikeModel.scale.setScalar(scale);
+        bikeModel.position.sub(center.multiplyScalar(scale));
+        bikeModel.position.y += (size.y * scale * 0.5) + 0.02;
+
+        // Materials enhancement
+        bikeModel.traverse(child => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach(m => enhanceMaterial(m));
+              } else {
+                enhanceMaterial(child.material);
+              }
+            }
+          }
+        });
+
+        bikeGroup.add(bikeModel);
+        loaderEl.classList.add('hidden');
+      },
+      (xhr) => {
+        if (xhr.lengthComputable) {
+          const pct = Math.floor((xhr.loaded / xhr.total) * 100);
+          loaderBar.style.width = pct + '%';
+          loaderPct.textContent = pct + '%';
+        }
+      },
+      (err) => {
+        console.warn('GLB load error:', err);
+        // Fallback: show placeholder geometry
+        createPlaceholderBike();
+        loaderEl.classList.add('hidden');
+      }
+    );
+
+    function enhanceMaterial(mat) {
+      mat.envMapIntensity = 1.5;
+      if (mat.color && mat.color.r < 0.15 && mat.color.g < 0.15 && mat.color.b < 0.15) {
+        mat.color.setHex(0x0a0a0a);
+      }
+      if (mat.roughness !== undefined) mat.roughness = Math.min(mat.roughness, 0.5);
+      if (mat.metalness !== undefined) mat.metalness = Math.max(mat.metalness, 0.3);
+    }
+
+    function createPlaceholderBike() {
+      // Simple stand-in if GLB fails
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.9 });
+      const greenMat = new THREE.MeshStandardMaterial({ color: 0x39ff14, roughness: 0.3, metalness: 0.6, emissive: 0x39ff14, emissiveIntensity: 0.3 });
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 0.45), bodyMat);
+      body.position.y = 0.65;
+      bikeGroup.add(body);
+
+      const fairing = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.18, 0.9, 8), greenMat);
+      fairing.rotation.z = Math.PI / 2;
+      fairing.position.set(1.0, 0.7, 0);
+      bikeGroup.add(fairing);
+
+      [-0.6, 0.6].forEach(x => {
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.1, 12, 32), bodyMat);
+        wheel.rotation.y = Math.PI / 2;
+        wheel.position.set(x, 0.38, 0);
+        bikeGroup.add(wheel);
+      });
+    }
+
+    /* ─────────────────── ENV MAP ─────────────────── */
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+
+    // Simple gradient env
+    const envScene = new THREE.Scene();
+    envScene.background = new THREE.Color(0x050505);
+    const envRT = pmremGenerator.fromScene(envScene);
+    scene.environment = envRT.texture;
+
+    /* ─────────────────── ANIMATE ─────────────────── */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+
+      // Rotate floor
+      floorGroup.rotation.y = t * 0.08;
+
+      // Rotate particles slowly
+      particles.rotation.y = t * 0.015;
+
+      // Pulse bounce light
+      bounceLight.intensity = 0.8 + Math.sin(t * 2.5) * 0.4;
+
+      // Pulse rings
+      ring.material.opacity = 0.3 + Math.sin(t * 1.2) * 0.2;
+      ring2.material.opacity = 0.2 + Math.sin(t * 1.8 + 1) * 0.15;
+
+      // Smooth camera to target shot
+      const shot = shots[targetShot];
+      const alpha = 1.0;
+      const spd = 0.04;
+      camera.position.lerp(shot.pos, spd);
+      camCurrent.target.lerp(shot.target, spd);
+      camera.lookAt(camCurrent.target);
+      camera.fov += (shot.fov - camera.fov) * spd;
+      camera.updateProjectionMatrix();
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+  })();
+  </script>
+</body>
+</html>
