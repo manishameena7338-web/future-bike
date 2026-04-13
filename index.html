@@ -503,9 +503,24 @@
   <!-- HUD -->
   <div id="hud">
     <div class="hud-logo">KAWASAKI</div>
-    <div class="hud-right">
-      NINJA H2R<br>
-      <span id="hud-section-name">OVERVIEW</span>
+    <div style="display:flex;align-items:center;gap:20px;">
+      <button id="audio-btn" onclick="toggleAudio()" style="
+        background:transparent;
+        border:1px solid rgba(57,255,20,0.35);
+        color:#39ff14;
+        font-family:'Share Tech Mono',monospace;
+        font-size:10px;
+        letter-spacing:0.3em;
+        padding:7px 14px;
+        cursor:pointer;
+        clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
+        transition:all 0.2s;
+        pointer-events:auto;
+      ">▶ SOUND</button>
+      <div class="hud-right">
+        NINJA H2R<br>
+        <span id="hud-section-name">OVERVIEW</span>
+      </div>
     </div>
   </div>
 
@@ -687,6 +702,107 @@
     <div class="footer-copy">NINJA H2R · TRACK USE ONLY · ALL RIGHTS RESERVED KAWASAKI HEAVY INDUSTRIES</div>
   </footer>
 
+  <!-- AUDIO ENGINE -->
+  <script>
+  let audioCtx = null, masterGain = null, isPlaying = false;
+  let osc1, osc2, osc3, lfo, lfoGain, distNode, filterNode, rpmLfo;
+
+  function buildEngine() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0;
+    masterGain.connect(audioCtx.destination);
+
+    // Distortion waveshaper for engine grit
+    distNode = audioCtx.createWaveShaper();
+    distNode.curve = makeDistortionCurve(180);
+    distNode.oversample = '4x';
+
+    // Low-pass filter — controls engine character
+    filterNode = audioCtx.createBiquadFilter();
+    filterNode.type = 'lowpass';
+    filterNode.frequency.value = 900;
+    filterNode.Q.value = 2.5;
+
+    // Main engine oscillator (fundamental)
+    osc1 = audioCtx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.value = 55;
+
+    // Harmonic layer
+    osc2 = audioCtx.createOscillator();
+    osc2.type = 'square';
+    osc2.frequency.value = 110;
+    const g2 = audioCtx.createGain(); g2.gain.value = 0.4;
+
+    // Sub rumble
+    osc3 = audioCtx.createOscillator();
+    osc3.type = 'sawtooth';
+    osc3.frequency.value = 28;
+    const g3 = audioCtx.createGain(); g3.gain.value = 0.55;
+
+    // RPM LFO — slowly cycles rpm up and down for idle feel
+    rpmLfo = audioCtx.createOscillator();
+    rpmLfo.type = 'sine';
+    rpmLfo.frequency.value = 0.18;
+    const rpmLfoGain = audioCtx.createGain();
+    rpmLfoGain.gain.value = 18;
+    rpmLfo.connect(rpmLfoGain);
+    rpmLfoGain.connect(osc1.frequency);
+    rpmLfoGain.connect(osc2.frequency);
+
+    // Combustion pulse LFO
+    lfo = audioCtx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 14;
+    lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 220;
+    lfo.connect(lfoGain);
+    lfoGain.connect(filterNode.frequency);
+
+    // Chain: oscs → distortion → filter → master
+    osc1.connect(distNode);
+    osc2.connect(g2); g2.connect(distNode);
+    osc3.connect(g3); g3.connect(distNode);
+    distNode.connect(filterNode);
+    filterNode.connect(masterGain);
+
+    [osc1, osc2, osc3, lfo, rpmLfo].forEach(o => o.start());
+    return audioCtx;
+  }
+
+  function makeDistortionCurve(amount) {
+    const n = 256, curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const x = (i * 2) / n - 1;
+      curve[i] = ((Math.PI + amount) * x) / (Math.PI + amount * Math.abs(x));
+    }
+    return curve;
+  }
+
+  function toggleAudio() {
+    const btn = document.getElementById('audio-btn');
+    if (!audioCtx) buildEngine();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    if (!isPlaying) {
+      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      masterGain.gain.setTargetAtTime(0.55, audioCtx.currentTime, 0.4);
+      isPlaying = true;
+      btn.textContent = '⏸ SOUND';
+      btn.style.borderColor = 'rgba(57,255,20,0.8)';
+      btn.style.color = '#39ff14';
+      btn.style.boxShadow = '0 0 12px rgba(57,255,20,0.3)';
+    } else {
+      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.3);
+      isPlaying = false;
+      btn.textContent = '▶ SOUND';
+      btn.style.boxShadow = 'none';
+    }
+  }
+  </script>
+
   <!-- THREE.JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -704,7 +820,7 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.85;
+    renderer.toneMappingExposure = 1.0;
     renderer.setClearColor(0x050505, 1);
 
     const scene = new THREE.Scene();
@@ -724,12 +840,11 @@
     scene.fog = new THREE.FogExp2(0x050505, 0.045);
 
     /* ─────────────────── LIGHTS ─────────────────── */
-    // Bright neutral ambient so original colours show through cleanly
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.8);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
-    // Pure white key — no tint so bike materials render true to their colours
-    const keyLight = new THREE.DirectionalLight(0xffffff, 4.0);
+    // Key light - white, moderate
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
     keyLight.position.set(4, 8, 6);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
@@ -740,22 +855,22 @@
     scene.add(keyLight);
 
     // Warm fill from front-left
-    const fillLight2 = new THREE.DirectionalLight(0xfff4e0, 1.8);
+    const fillLight2 = new THREE.DirectionalLight(0xfff4e0, 0.8);
     fillLight2.position.set(-5, 3, 5);
     scene.add(fillLight2);
 
-    // Cool blue rim for depth and separation from background
-    const rimLight = new THREE.DirectionalLight(0xaad4ff, 2.2);
+    // Cool blue rim for separation
+    const rimLight = new THREE.DirectionalLight(0xaad4ff, 1.0);
     rimLight.position.set(-4, 5, -6);
     scene.add(rimLight);
 
-    // Subtle under-glow (floor bounce, kept very low so it doesn't wash colour)
-    const bounceLight = new THREE.PointLight(0x39ff14, 0.4, 10);
-    bounceLight.position.set(0, -0.8, 0);
+    // Subtle green under-glow from floor
+    const bounceLight = new THREE.PointLight(0x39ff14, 0.3, 10);
+    bounceLight.position.set(0, -0.5, 0);
     scene.add(bounceLight);
 
-    // Hemisphere sky/ground for soft natural fill
-    const fillLight = new THREE.HemisphereLight(0xffffff, 0x222222, 1.2);
+    // Hemisphere - sky neutral, ground dark
+    const fillLight = new THREE.HemisphereLight(0xddeeff, 0x111111, 0.5);
     scene.add(fillLight);
 
     /* ─────────────────── FLOOR ─────────────────── */
@@ -964,64 +1079,54 @@
     );
 
     function enhanceMaterial(mat) {
-      if (!mat) return;
+      if (!mat || mat.type === 'MeshBasicMaterial') return;
       mat.needsUpdate = true;
 
-      // Boost env map reflections for everything
-      mat.envMapIntensity = 2.0;
+      // ── CRITICAL: if the material has a texture map, NEVER touch its colour ──
+      // Only adjust PBR properties so textures render correctly
+      const hasMap = mat.map || mat.normalMap || mat.roughnessMap || mat.metalnessMap || mat.aoMap;
 
+      if (hasMap) {
+        // Texture-based material — just tune PBR values, never alter colour
+        if (mat.roughness !== undefined && mat.roughness > 0.9) mat.roughness = 0.6;
+        if (mat.metalness !== undefined) mat.metalness = Math.max(mat.metalness, 0.1);
+        mat.envMapIntensity = 1.2;
+        return;
+      }
+
+      // ── No texture — classify by colour and apply correct PBR ──
       const c = mat.color;
       if (!c) return;
 
-      // Get HSL to classify the material by its original colour
       const hsl = {};
       c.getHSL(hsl);
-      const h = hsl.h, s = hsl.s, l = hsl.l;
+      const { h, s, l } = hsl;
 
-      // ── Lime / yellow-green panels (Kawasaki signature colour) ──
-      // H around 0.20–0.38, saturated → make it vivid Kawasaki lime
-      if (h >= 0.18 && h <= 0.40 && s > 0.3) {
-        c.setHex(0x8dc63f);          // official Kawasaki Lime Green
-        mat.roughness  = 0.25;
-        mat.metalness  = 0.0;
+      if (h >= 0.18 && h <= 0.40 && s > 0.25) {
+        // Kawasaki Lime Green panels
+        c.setHex(0x8dc63f);
+        mat.roughness = 0.3; mat.metalness = 0.0; mat.envMapIntensity = 0.8;
+      } else if (l < 0.05) {
+        // Gloss black fairing
+        c.setHex(0x080808);
+        mat.roughness = 0.1; mat.metalness = 0.5; mat.envMapIntensity = 2.0;
+      } else if (l < 0.20 && s < 0.15) {
+        // Dark grey frame/engine
+        mat.roughness = 0.4; mat.metalness = 0.7; mat.envMapIntensity = 1.5;
+      } else if (l > 0.6 && s < 0.12) {
+        // Chrome / silver
+        c.setHex(0xbbbbbb);
+        mat.roughness = 0.05; mat.metalness = 1.0; mat.envMapIntensity = 2.5;
+      } else if (l >= 0.20 && l <= 0.6 && s < 0.15) {
+        // Mid grey - exhaust, brackets
+        mat.roughness = 0.5; mat.metalness = 0.55; mat.envMapIntensity = 1.2;
+      } else if ((h < 0.05 || h > 0.95) && s > 0.4) {
+        // Red/orange accents
+        mat.roughness = 0.35; mat.metalness = 0.05; mat.envMapIntensity = 0.6;
+      } else {
+        // Fallback - gentle touch
+        if (mat.roughness > 0.8) mat.roughness = 0.5;
         mat.envMapIntensity = 1.0;
-      }
-      // ── Pure black / very dark panels → deep gloss black ──
-      else if (l < 0.06) {
-        c.setHex(0x0c0c0c);
-        mat.roughness  = 0.12;
-        mat.metalness  = 0.6;
-        mat.envMapIntensity = 2.5;
-      }
-      // ── Dark grey / frame / engine cases ──
-      else if (l < 0.18 && s < 0.15) {
-        c.setHex(0x1a1a1a);
-        mat.roughness  = 0.35;
-        mat.metalness  = 0.75;
-        mat.envMapIntensity = 2.2;
-      }
-      // ── Silver / chrome / aluminium ──
-      else if (l > 0.55 && s < 0.12) {
-        c.setHex(0xc8c8c8);
-        mat.roughness  = 0.08;
-        mat.metalness  = 1.0;
-        mat.envMapIntensity = 3.0;
-      }
-      // ── Mid-grey (exhaust, brackets) ──
-      else if (l >= 0.18 && l <= 0.55 && s < 0.15) {
-        mat.roughness  = 0.45;
-        mat.metalness  = 0.6;
-        mat.envMapIntensity = 1.8;
-      }
-      // ── Red / orange accents ──
-      else if ((h < 0.05 || h > 0.95) && s > 0.4) {
-        mat.roughness  = 0.3;
-        mat.metalness  = 0.1;
-      }
-      // ── Everything else: just boost reflectivity ──
-      else {
-        mat.roughness  = mat.roughness !== undefined ? Math.min(mat.roughness, 0.45) : 0.4;
-        mat.metalness  = mat.metalness !== undefined ? Math.max(mat.metalness, 0.2) : 0.2;
       }
     }
 
@@ -1051,21 +1156,23 @@
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
 
-    // Build a synthetic studio env — bright panels around the scene
-    // so chrome/metal parts get proper mirror-like reflections
+    // Neutral studio environment — gives correct reflections without colour bleed
+    // Uses a dark scene with subtle warm/cool panels to simulate a photography studio
     const envScene = new THREE.Scene();
-    const makePanel = (color, intensity, x, y, z) => {
-      const light = new THREE.PointLight(color, intensity, 50);
-      light.position.set(x, y, z);
-      envScene.add(light);
-    };
-    makePanel(0xffffff, 8,   6,  4,  6);
-    makePanel(0xffffff, 6,  -6,  4,  6);
-    makePanel(0xaad4ff, 4,   0,  6, -6);
-    makePanel(0xfff4e0, 3,   0, -3,  0);
-    makePanel(0x8dc63f, 1.5, 3, -1,  3);  // faint green floor bounce
+    // Top light (soft white ceiling)
+    const eTop = new THREE.PointLight(0xffffff, 2, 30); eTop.position.set(0, 10, 0);
+    // Front panels
+    const eF1 = new THREE.PointLight(0xfff8f0, 1.5, 30); eF1.position.set(5, 3, 8);
+    const eF2 = new THREE.PointLight(0xf0f4ff, 1.5, 30); eF2.position.set(-5, 3, 8);
+    // Back rim
+    const eB = new THREE.PointLight(0xc8d8ff, 1, 30); eB.position.set(0, 4, -8);
+    // Floor bounce (very dim)
+    const eGnd = new THREE.PointLight(0x223300, 0.5, 10); eGnd.position.set(0, -3, 0);
+    envScene.add(eTop, eF1, eF2, eB, eGnd);
+
     const envRT = pmremGenerator.fromScene(envScene);
     scene.environment = envRT.texture;
+    // Do NOT set scene.background — keep the dark canvas background
 
     /* ─────────────────── ANIMATE ─────────────────── */
     const clock = new THREE.Clock();
@@ -1079,9 +1186,6 @@
 
       // Rotate particles slowly
       particles.rotation.y = t * 0.015;
-
-      // Pulse bounce light
-      bounceLight.intensity = 0.8 + Math.sin(t * 2.5) * 0.4;
 
       // Pulse rings
       ring.material.opacity = 0.3 + Math.sin(t * 1.2) * 0.2;
