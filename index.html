@@ -704,7 +704,7 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 0.85;
     renderer.setClearColor(0x050505, 1);
 
     const scene = new THREE.Scene();
@@ -724,12 +724,13 @@
     scene.fog = new THREE.FogExp2(0x050505, 0.045);
 
     /* ─────────────────── LIGHTS ─────────────────── */
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    // Bright neutral ambient so original colours show through cleanly
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.8);
     scene.add(ambientLight);
 
-    // Key light — green tint
-    const keyLight = new THREE.DirectionalLight(0x88ffaa, 3.5);
-    keyLight.position.set(5, 8, 5);
+    // Pure white key — no tint so bike materials render true to their colours
+    const keyLight = new THREE.DirectionalLight(0xffffff, 4.0);
+    keyLight.position.set(4, 8, 6);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
     keyLight.shadow.camera.near = 0.1;
@@ -738,18 +739,23 @@
     keyLight.shadow.camera.right = keyLight.shadow.camera.top = 6;
     scene.add(keyLight);
 
-    // Rim light — blue/cyan
-    const rimLight = new THREE.DirectionalLight(0x00aaff, 2.0);
-    rimLight.position.set(-6, 4, -4);
+    // Warm fill from front-left
+    const fillLight2 = new THREE.DirectionalLight(0xfff4e0, 1.8);
+    fillLight2.position.set(-5, 3, 5);
+    scene.add(fillLight2);
+
+    // Cool blue rim for depth and separation from background
+    const rimLight = new THREE.DirectionalLight(0xaad4ff, 2.2);
+    rimLight.position.set(-4, 5, -6);
     scene.add(rimLight);
 
-    // Bottom bounce
-    const bounceLight = new THREE.PointLight(0x39ff14, 1.2, 12);
-    bounceLight.position.set(0, -1.5, 0);
+    // Subtle under-glow (floor bounce, kept very low so it doesn't wash colour)
+    const bounceLight = new THREE.PointLight(0x39ff14, 0.4, 10);
+    bounceLight.position.set(0, -0.8, 0);
     scene.add(bounceLight);
 
-    // Fill
-    const fillLight = new THREE.HemisphereLight(0x111122, 0x000000, 0.8);
+    // Hemisphere sky/ground for soft natural fill
+    const fillLight = new THREE.HemisphereLight(0xffffff, 0x222222, 1.2);
     scene.add(fillLight);
 
     /* ─────────────────── FLOOR ─────────────────── */
@@ -958,12 +964,65 @@
     );
 
     function enhanceMaterial(mat) {
-      mat.envMapIntensity = 1.5;
-      if (mat.color && mat.color.r < 0.15 && mat.color.g < 0.15 && mat.color.b < 0.15) {
-        mat.color.setHex(0x0a0a0a);
+      if (!mat) return;
+      mat.needsUpdate = true;
+
+      // Boost env map reflections for everything
+      mat.envMapIntensity = 2.0;
+
+      const c = mat.color;
+      if (!c) return;
+
+      // Get HSL to classify the material by its original colour
+      const hsl = {};
+      c.getHSL(hsl);
+      const h = hsl.h, s = hsl.s, l = hsl.l;
+
+      // ── Lime / yellow-green panels (Kawasaki signature colour) ──
+      // H around 0.20–0.38, saturated → make it vivid Kawasaki lime
+      if (h >= 0.18 && h <= 0.40 && s > 0.3) {
+        c.setHex(0x8dc63f);          // official Kawasaki Lime Green
+        mat.roughness  = 0.25;
+        mat.metalness  = 0.0;
+        mat.envMapIntensity = 1.0;
       }
-      if (mat.roughness !== undefined) mat.roughness = Math.min(mat.roughness, 0.5);
-      if (mat.metalness !== undefined) mat.metalness = Math.max(mat.metalness, 0.3);
+      // ── Pure black / very dark panels → deep gloss black ──
+      else if (l < 0.06) {
+        c.setHex(0x0c0c0c);
+        mat.roughness  = 0.12;
+        mat.metalness  = 0.6;
+        mat.envMapIntensity = 2.5;
+      }
+      // ── Dark grey / frame / engine cases ──
+      else if (l < 0.18 && s < 0.15) {
+        c.setHex(0x1a1a1a);
+        mat.roughness  = 0.35;
+        mat.metalness  = 0.75;
+        mat.envMapIntensity = 2.2;
+      }
+      // ── Silver / chrome / aluminium ──
+      else if (l > 0.55 && s < 0.12) {
+        c.setHex(0xc8c8c8);
+        mat.roughness  = 0.08;
+        mat.metalness  = 1.0;
+        mat.envMapIntensity = 3.0;
+      }
+      // ── Mid-grey (exhaust, brackets) ──
+      else if (l >= 0.18 && l <= 0.55 && s < 0.15) {
+        mat.roughness  = 0.45;
+        mat.metalness  = 0.6;
+        mat.envMapIntensity = 1.8;
+      }
+      // ── Red / orange accents ──
+      else if ((h < 0.05 || h > 0.95) && s > 0.4) {
+        mat.roughness  = 0.3;
+        mat.metalness  = 0.1;
+      }
+      // ── Everything else: just boost reflectivity ──
+      else {
+        mat.roughness  = mat.roughness !== undefined ? Math.min(mat.roughness, 0.45) : 0.4;
+        mat.metalness  = mat.metalness !== undefined ? Math.max(mat.metalness, 0.2) : 0.2;
+      }
     }
 
     function createPlaceholderBike() {
@@ -992,9 +1051,19 @@
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
 
-    // Simple gradient env
+    // Build a synthetic studio env — bright panels around the scene
+    // so chrome/metal parts get proper mirror-like reflections
     const envScene = new THREE.Scene();
-    envScene.background = new THREE.Color(0x050505);
+    const makePanel = (color, intensity, x, y, z) => {
+      const light = new THREE.PointLight(color, intensity, 50);
+      light.position.set(x, y, z);
+      envScene.add(light);
+    };
+    makePanel(0xffffff, 8,   6,  4,  6);
+    makePanel(0xffffff, 6,  -6,  4,  6);
+    makePanel(0xaad4ff, 4,   0,  6, -6);
+    makePanel(0xfff4e0, 3,   0, -3,  0);
+    makePanel(0x8dc63f, 1.5, 3, -1,  3);  // faint green floor bounce
     const envRT = pmremGenerator.fromScene(envScene);
     scene.environment = envRT.texture;
 
